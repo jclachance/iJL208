@@ -15,6 +15,8 @@ Installation
 Clone the repository into you preferred folder::
 
     git clone https://github.com/jclachance/iJL208.git
+    cd <folder where repository is cloned>/iJL208
+    python setup.py develop --user
 
 
 Example use
