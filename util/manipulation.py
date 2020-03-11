@@ -24,7 +24,7 @@ def save_model(model):
 def load_latest_model():
     import glob
     #Path to where all the models are stored
-    path = '/ip29/jclachan/Doctorat/iJL207/Model_versions/*'
+    path = '../Model_versions/*'
     #All files in that path
     list_of_files = glob.glob(path) # * means all if need specific format then *.csv
     #Get the latest

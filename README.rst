@@ -1,8 +1,8 @@
 |License|
 
-iJL208
+*i*JL208
 ======
-The metabolic model for the near minimal organism **Mesoplasma florum**.
+The metabolic model for the near minimal organism *Mesoplasma florum*.
 
 Significance
 ------------
