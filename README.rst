@@ -12,7 +12,7 @@ Complete knowledge of molecular mecanisms happening within a cell is likely to o
 Installation
 ~~~~~~~~~~~~
 
- Clone the repository into you preferred folder:
+Clone the repository into you preferred folder:
 
 	git clone https://github.com/jclachance/iJL208.git
 
