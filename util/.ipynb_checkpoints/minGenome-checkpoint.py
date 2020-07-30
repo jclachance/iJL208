@@ -1,27 +1,15 @@
 ###########################
 ### SOLVING FOR iJL208 ###
 ###########################
-import json
-import pandas as pd
-import pulp
-import itertools
-import pdb
-import re
-import os
-from tqdm import tqdm
 
-<<<<<<< HEAD
-def build_MIP_by_Cobrapy(model, growth_rate, essential_genes_file, parameters_file, regulator_genes_file, TU_Json_file, out_path, verbose=False, solver='CPLEX', iterations=10):
-=======
-def build_MIP_by_Cobrapy(model, growth_rate, essential_genes_file, parameters_file, regulator_genes_file, TU_Json_file, out_path='../data/minGenome', verbose=False, solver='CPLEX', iterations=10):
->>>>>>> 92914af8d0b990422e931ea417b3946dbf92b46b
+def build_MIP_by_Cobrapy(me,mu,
+    eg_f,
+    parameters_f,
+    reg_f,
+    TU_Json_file):
+
     M = 1000
-    #Change variable names to comply former names
-    me = model
-    mu = growth_rate
-    eg_f = essential_genes_file
-    parameters_f = parameters_file
-    reg_f = regulator_genes_file
+
     ############# sets ################################
     # TU
     with open(TU_Json_file) as data_file:    
@@ -177,32 +165,13 @@ def build_MIP_by_Cobrapy(model, growth_rate, essential_genes_file, parameters_fi
                         "knockout" + r.id + '_LB_' + str(i)
 
     ############# constraints ################################
-    if verbose:
-        print("add reaction indicator")    
+    print("add reaction indicator")    
     addReactionIndicator(lp_prob)
 
-    def get_S(model,mu):
-        """build the stoichiometric matrix at a specific growth rate"""
-            # intialize to 0
-        # S = dok_matrix((len(self.metabolites), len(self.reactions)))
-        S = {}
-        # populate with stoichiometry
-        for i, r in enumerate(model.reactions):
-            for met, value in r._metabolites.items():
-                #met_index = self.metabolites.index(met)
-                if met.id not in S:
-                    S[met.id] = {}
-                if hasattr(value, "subs"):
-                    S[met.id][r.id] = float(value.subs(mu, growth_rate))
-                else:
-                    S[met.id][r.id] = float(value)
-        return S
-
-    #### M-model constraints
-    S = get_S(me, mu) # growth rate is 0.3
+    #### ME model constraint
+    S = get_S(me) # growth rate is 0.3
     # print S
-    if verbose:
-        print("add GSM constraint")
+    print("add GSM constraint")
     # for i in metabolites:
     for i in S.keys():
         label = "mass_balance_%s"%i
@@ -211,8 +180,7 @@ def build_MIP_by_Cobrapy(model, growth_rate, essential_genes_file, parameters_fi
         lp_prob += condition, label
 
     ###### cut in the genome
-    if verbose:
-        print("add cutting constraints")
+    print("add cutting constraints")
     lp_prob += pulp.lpSum(y[j] for j in genes) == 1, "end"
     lp_prob += pulp.lpSum(x[j] for j in genes) == 1, "start"
 
@@ -236,13 +204,12 @@ def build_MIP_by_Cobrapy(model, growth_rate, essential_genes_file, parameters_fi
         lp_prob += z[genes[i-1]] + x[gene] - y[gene] == z[gene],'indicator' + str(gene)
 
     ##### TUs 
-    if verbose:
-        print("add TU constraint")
+    print("add TU constraint")
     for gene,promoters in TUs.items():
         if gene in not_shared: continue
         gene = 'u_G_' + gene
         len_pro = len(promoters)
-        #print(gene, promoters)
+        print(gene, promoters)
         lp_prob += z[gene] - pulp.lpSum(z['u_G_'+j] for j in promoters) + \
                     (len_pro - 1) >= 0,'TU_all_'+gene
         for pro in promoters:
@@ -250,8 +217,7 @@ def build_MIP_by_Cobrapy(model, growth_rate, essential_genes_file, parameters_fi
             lp_prob += z[gene] - z[pro] <=0, 'TU_'+gene+'_'+pro
 
     ##### some overlapped region cannot be selected as the start of deletion
-    if verbose:
-        print("add no start and essential genes")
+    print("add no start and essential genes")
     for gene in no_start:
         lp_prob += x[gene] == 0, 'no_start_'+gene
 
@@ -300,38 +266,24 @@ def build_MIP_by_Cobrapy(model, growth_rate, essential_genes_file, parameters_fi
 
     # current test version of using python to call the optimization
     # options = [epgap, epagap, epint, epopt, eprhs]
-    if solver == 'gurobi':
-        GUROBI_CMD_OPTIONS = [('Threads', 8), ('TimeLimit', 1800), ('FeasibilityTol',1E-9),
-                        ('OptimalityTol',1E-9),('IntFeasTol',1E-9),
-                        ('MIPGapAbs', 0), ('MIPGap', 0), ('CliqueCuts', 2)]
-        pulp_solver = pulp.solvers.GUROBI_CMD(path=None, keepFiles=0, mip=1, msg=0,
-                                options=GUROBI_CMD_OPTIONS)
-    elif solver == 'CPLEX':
-        pulp_solver = pulp.solvers.CPLEX(path=None, keepFiles=0, mip=1,\
-            msg=1, options=['mip tolerances mipgap 0', \
-            'mip tolerances absmipgap 0', 'mip tolerances integrality 0',\
-            'simplex tolerances optimality 1E-9',\
-            'simplex tolerances feasibility 1E-9',], timelimit=1200)
-    elif solver == 'GLPK':
-        pulp_solver = pulp.solvers.GLPK(path=None, keepFiles=0, mip=1,\
-            msg=1, options=['mip tolerances mipgap 0', \
-            'mip tolerances absmipgap 0', 'mip tolerances integrality 0',\
-            'simplex tolerances optimality 1E-9',\
-            'simplex tolerances feasibility 1E-9',])
-    else:
-        raise ValueError('Solver name not compatible')
-
+    GUROBI_CMD_OPTIONS = [('Threads', 8), ('TimeLimit', 1800), ('FeasibilityTol',1E-9),
+                      ('OptimalityTol',1E-9),('IntFeasTol',1E-9),
+                      ('MIPGapAbs', 0), ('MIPGap', 0), ('CliqueCuts', 2)]
+    pulp_solver = pulp.solvers.GUROBI_CMD(path=None, keepFiles=0, mip=1, msg=0,
+                            options=GUROBI_CMD_OPTIONS)
+    # pulp_solver = pulp.solvers.CPLEX(path=None, keepFiles=0, mip=1,\
+    #     msg=1, options=['mip tolerances mipgap 0', \
+    #     'mip tolerances absmipgap 0', 'mip tolerances integrality 0',\
+    #     'simplex tolerances optimality 1E-9',\
+    #     'simplex tolerances feasibility 1E-9',], timelimit=1200)
     x_list = []
     y_list = []
     status = []
-
     def iterate_solve(lp_prob,iter_count):
         lp_prob.solve(pulp_solver)
-        if verbose:
-            print("----------- " + str(iter_count) + " ------------")
+        print("----------- " + str(iter_count) + " ------------")
         status.append(pulp.LpStatus[lp_prob.status])
-        if verbose:
-            print("Status:", pulp.LpStatus[lp_prob.status])
+        print("Status:", pulp.LpStatus[lp_prob.status])
         for v in lp_prob.variables():
             if "x_u_G_" in v.name and v.varValue == 1:               
                 xname = v.name.replace("x_","")
@@ -339,7 +291,8 @@ def build_MIP_by_Cobrapy(model, growth_rate, essential_genes_file, parameters_fi
                 xname = xname.replace("PM-","PM_")
                 xname = xname.replace('u-','u_')
                 xname = xname.replace('G-','G_')
-                #print(xname,v.name)
+                
+                print(xname,v.name)
                 lp_prob += x[xname] == 1
                 if xname not in x_list: 
                     x_list.append(xname)
@@ -357,103 +310,5 @@ def build_MIP_by_Cobrapy(model, growth_rate, essential_genes_file, parameters_fi
         lp_prob.constraints['end'].changeRHS(rhs)
         return lp_prob
 
-    for iter_count in range(1,iterations):
-        #Updates the lp_prob at each iteration
+    for iter_count in range(1,2):
         lp_prob = iterate_solve(lp_prob,iter_count)
-<<<<<<< HEAD
-
-    #Write the final results  
-    out_file = 'deletion_results_' + str(iterations-1) + '.csv'
-=======
-    
-    #Write the final results  
-    out_file = 'deletion_results_' + str(iteration-1) + '.csv'
->>>>>>> 92914af8d0b990422e931ea417b3946dbf92b46b
-    writing_path = os.path.join(out_path, out_file)
-    pd.DataFrame({'start': x_list, 'end':y_list, 'status':status}).to_csv(writing_path)
-
-#### analyze result
-def get_all_deletions(result_df, genes_and_promoters):
-    #Get the start and end location, and the span of them
-    all_deletions = []
-    for i, row in result_df.iterrows():
-        start_element = row['start'].replace('u_G_','')
-        end_element = row['end'].replace('u_G_','')
-        #Find start and end in genome
-        for j, line in genes_and_promoters.iterrows():
-            if start_element == line['gene_or_promoter']:
-                start = line['start']
-            if end_element == line['gene_or_promoter']:
-                end = line['end']
-        all_deletions.append((start,end, abs(start-end)))
-    deletions_loc = pd.DataFrame.from_records(all_deletions, columns=['start_loc','end_loc','length'])
-    return all_deletions
-    
-def get_genes_in_results(all_deletions, genes_and_promoters):
-    #Get all the genes in the results
-    deleted_genes = []
-    for t in all_deletions:
-        # '+' strand deletion
-        if t[1] - t[0] > 0:
-            start = t[0]
-            end = t[1]
-        # '-' strand deletions
-        elif t[1] - t[0] < 0:
-            start = t[1]
-            end = t[0]
-        #Find the genes within those boundaries
-        deleted_genes.append([g for g in genes_and_promoters['gene_or_promoter'][(genes_and_promoters['start'] > start)\
-                                                            & (genes_and_promoters['end'] < end)\
-                                                            & (genes_and_promoters['class'] == 'genes')]])
-    all_deleted_genes = []
-    for l in deleted_genes:
-        for g in l:
-            all_deleted_genes.append(g)
-    return list(set(all_deleted_genes))
-    
-def calculate_mcc(all_deleted_genes, comparison_syn3):
-    from math import sqrt
-    def get_confusion_matrix(all_deleted_genes, new_baby_sheet):
-        #Make the comparisons now 
-        #Number of deleted genes absent from syn3.0 (true positives)
-        true_positives = set(all_deleted_genes).intersection(set(new_baby_sheet['locus_tag'][new_baby_sheet['syn3.0'] == 'thrash'].to_list()))
-        #Number of deleted genes that are in syn3.0 (false positives)
-        false_positives = set(all_deleted_genes).intersection(set(new_baby_sheet['locus_tag'][new_baby_sheet['syn3.0'] == 'keep'].to_list()))
-        #Number of non-deleted genes that are in syn3.0 (true negatives)
-        all_florum_genes = set(new_baby_sheet['locus_tag'].to_list())
-        non_deleted_genes = all_florum_genes.difference(set(all_deleted_genes))
-        true_negatives = non_deleted_genes.intersection(set(new_baby_sheet['locus_tag'][new_baby_sheet['syn3.0']=='keep'].to_list()))
-        #Number of non-deleted genes that are missing in syn3.0 (false negatives)
-        false_negatives = non_deleted_genes.intersection(set(new_baby_sheet['locus_tag'][new_baby_sheet['syn3.0']=='thrash']))
-        
-        return len(true_positives), len(false_positives), len(true_negatives), len(false_negatives)
-    
-    tp, fp, tn, fn = get_confusion_matrix(all_deleted_genes, comparison_syn3)
-    num = float((tp*tn)-(fp*fn))
-    denom = float(sqrt((tp+fp)*(tp+fn)*(tn+fp)*(tn+fn)))
-    mcc = num/denom
-    return mcc
-
-def get_deletion_results(max_deletion_df, genes_and_promoters, comparison_syn3):
-    all_deletion_results, old_all_deleted_genes = [], []
-    all_deletions = get_all_deletions(max_deletion_df, genes_and_promoters)
-    for i in tqdm(range(len(max_deletion_df))):
-        result_df = max_deletion_df.iloc[:i,:]
-        if result_df.empty:
-            pass
-        else:
-            new_all_deleted_genes = get_genes_in_results(all_deletions[:i], genes_and_promoters)
-            deleted_genes_in_deletion = list(set(new_all_deleted_genes).difference(set(old_all_deleted_genes)))
-            old_all_deleted_genes = new_all_deleted_genes
-            mcc = calculate_mcc(old_all_deleted_genes, comparison_syn3)
-            # Generate the deletions results for this iteration
-            all_deletion_results.append((len(old_all_deleted_genes), 
-                                         deleted_genes_in_deletion,
-                                         sum([t[2] for t in all_deletions[:i]]),
-                                         mcc))
-    
-<<<<<<< HEAD
-    return all_deletion_results
-=======
-    return all_deletion_results
->>>>>>> 92914af8d0b990422e931ea417b3946dbf92b46b
