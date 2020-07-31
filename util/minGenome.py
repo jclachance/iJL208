@@ -10,11 +10,7 @@ import re
 import os
 from tqdm import tqdm
 
-<<<<<<< HEAD
-def build_MIP_by_Cobrapy(model, growth_rate, essential_genes_file, parameters_file, regulator_genes_file, TU_Json_file, out_path, verbose=False, solver='CPLEX', iterations=10):
-=======
 def build_MIP_by_Cobrapy(model, growth_rate, essential_genes_file, parameters_file, regulator_genes_file, TU_Json_file, out_path='../data/minGenome', verbose=False, solver='CPLEX', iterations=10):
->>>>>>> 92914af8d0b990422e931ea417b3946dbf92b46b
     M = 1000
     #Change variable names to comply former names
     me = model
@@ -360,15 +356,9 @@ def build_MIP_by_Cobrapy(model, growth_rate, essential_genes_file, parameters_fi
     for iter_count in range(1,iterations):
         #Updates the lp_prob at each iteration
         lp_prob = iterate_solve(lp_prob,iter_count)
-<<<<<<< HEAD
-
-    #Write the final results  
-    out_file = 'deletion_results_' + str(iterations-1) + '.csv'
-=======
     
     #Write the final results  
     out_file = 'deletion_results_' + str(iteration-1) + '.csv'
->>>>>>> 92914af8d0b990422e931ea417b3946dbf92b46b
     writing_path = os.path.join(out_path, out_file)
     pd.DataFrame({'start': x_list, 'end':y_list, 'status':status}).to_csv(writing_path)
 
@@ -452,8 +442,4 @@ def get_deletion_results(max_deletion_df, genes_and_promoters, comparison_syn3):
                                          sum([t[2] for t in all_deletions[:i]]),
                                          mcc))
     
-<<<<<<< HEAD
     return all_deletion_results
-=======
-    return all_deletion_results
->>>>>>> 92914af8d0b990422e931ea417b3946dbf92b46b
